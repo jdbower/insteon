@@ -1,0 +1,200 @@
+#!/bin/bash
+ 
+for filename in /etc/insteon.conf ~/.insteon.conf /etc/insteon.hosts ~/.insteon.hosts; do
+  if [ -f "$filename" ]; then
+    . $filename
+  fi
+done
+ 
+function debug() {
+  if [ "$debug" = "TRUE" ]; then
+    >&2 echo "DEBUG: $1"
+  fi
+}
+ 
+function usage() {
+  echo "Syntax: $(basename $0) device command [value]"
+  echo "device: The device ID or insteon.hosts name of the device"
+  echo "command: on, fast_on, off, fast_off, fan, status, status_fan"
+  echo "value: The percent you'd like to set the dimmer to (0-100) or"
+  echo "       low|medium|high|off for fan control."
+  echo
+  echo "$1"
+  exit 1
+}
+ 
+err_msg=""
+ 
+for var in insteon_ip insteon_port insteon_user insteon_pwd; do
+  if [ "${!var}" = "" ]; then
+    err_msg="$err_msg
+ERROR: $var not set in /etc/insteon.conf or ~/.insteon.conf"
+  fi
+  debug "$var = ${!var}"
+done
+ 
+if [ "$err_msg" != "" ]; then
+  usage "$err_msg"
+fi
+ 
+device=$1
+cmd=$2
+value=$3
+ 
+debug "device = $device"
+debug "cmd = $cmd"
+debug "value = $value"
+ 
+if [ "${!device}" ]; then
+  device_id="${!device}"
+  debug "found device in hosts file"
+  # Allow the classic hh.hh.hh format, hh:hh:hh format for those 
+  # who love IPv6, or just hhhhhh
+  device_id=$(echo "${device_id^^}" | sed 's/[\:\.]//g')
+else
+  device_id=$device
+  device_id=$(echo "${device^^}" | sed 's/[\:\.]//g')
+fi
+debug "device_id = $device_id"
+ 
+if ! [[ "$device_id" =~ ^[0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]$ ]]; then
+  usage "ERROR: Device $device doesn't have a device ID of the format [00-FF].[00-FF].[00-FF]"
+fi
+ 
+function send_cmd() {
+  cmd=$1
+  device_id=$2
+  value=$3
+  debug "send_cmd: cmd = $cmd; device_id = $device_id; value = $value"
+  sd_flag="0F"
+  case $cmd in
+    "on")
+      cmd_code=11
+    ;;
+    "fast_on")
+      cmd_code=12
+    ;;
+    "off")
+      cmd_code=13
+      value=00
+    ;;
+    "fast_off")
+      cmd_code=14
+      value=00
+    ;;
+    "fan")
+      cmd_code="11"
+      # This is an extended command
+      sd_flag="1F"
+    ;;
+    "status")
+      cmd_code="19"
+      value="02"
+    ;;
+    "status_fan")
+      cmd_code="19"
+      value="03"
+    ;;
+    *)
+      usage "ERROR: There's a bug in my code and I sent an invalid command internally!"
+    ;;
+  esac
+  debug "send_cmd: cmd_code = $cmd_code; sd_flag = $sd_flag; value = $value"
+  if [ "$cmd_code" != "19" ]; then
+    curl_command="http://$insteon_ip:$insteon_port/3?0262${device_id}${sd_flag}${cmd_code}${value}=I=3"
+    debug "send_cmd: sending $curl_command as $insteon_user:$insteon_pwd"
+    curl -X POST -u $insteon_user:$insteon_pwd "$curl_command"
+  else
+    # We're looking for a status.
+    curl_command="http://$insteon_ip:$insteon_port/sx.xml?${device_id}=${cmd_code}${value}" 
+    debug "send_cmd: sending $curl_command as $insteon_user:$insteon_pwd"
+    curr_status=$(curl --silent -u $insteon_user:$insteon_pwd "$curl_command" | grep "D=" | awk -F\" '{print $2}')
+    response_id=${curr_status:0:6}
+    response_ack=${curr_status:6:2}
+    response_cmd=${curr_status:8:2}
+    response_value=${curr_status:10:2}
+    debug "send_cmd: curr_status = $curr_status"
+    debug "send_cmd: response_id = $response_id; response_ack = $response_ack"
+    debug "send_cmd: response_cmd = $response_cmd; response_value = $response_value"
+    if [ "$response_ack" != "25" ]; then
+      echo "ERROR: Device not ready. $curr_status"
+      exit 2
+    fi
+    if [ "$response_id" != "$device_id" ]; then
+      echo "ERROR: Wrong device ID in response. $curr_status"
+      exit 2
+    fi
+    if [ "$response_cmd" != "$cmd_code" ]; then
+      echo "ERROR: Response for wrong command. $curr_status"
+      exit 2
+    fi
+    if [ "$cmd" = "status" ]; then
+      printf "%0.f\n" $(echo "scale=1;ibase=16;64*$response_value/FF" | bc)
+    else 
+      case $response_value in
+        "00")
+          echo "off"
+        ;;
+        "55")
+          echo "low"
+        ;;
+        "AA")
+          echo "medium"
+        ;;
+        "FF")
+          echo "high"
+        ;;
+        *)
+          echo $response_value
+        ;;
+      esac
+    fi
+  fi
+}
+ 
+cmd=${cmd,,}
+case $cmd in
+  "on"|"fast_on")
+    if [ "$value" == "" ]; then
+      value=100
+    fi
+    if ! [[ "$value" =~ ^[0]*[0-9][0-9]?$|^[0]*100$ ]]; then
+      echo "ERROR: $value is out of range (0-100)"
+      exit 2
+    fi
+    hex_value=$(echo "ibase=10;obase=16;255 * $value / 100" | bc | awk -F\. '{printf("%02X", strtonum("0x"$1))}')
+    debug "value = $value; hex_value = $hex_value"
+    send_cmd $cmd $device_id $hex_value
+  ;;
+  "off"|"fast_off")
+    send_cmd $cmd $device_id
+  ;;
+  "status"|"status_fan")
+    send_cmd $cmd $device_id
+  ;;
+  "fan")
+    case $value in
+      "off")
+        hex_value="0002"
+      ;;
+      "low")
+        hex_value="5502"
+      ;;
+      "medium"|"med")
+        hex_value="AA02"
+      ;;
+      "high")
+        hex_value="FF02"
+      ;;
+      *)
+        usage "ERROR: Invalid value $value - expecting low, medium, high, off"
+        exit 1
+      ;;
+    esac
+    debug "value = $value; hex_value = $hex_value"
+    send_cmd $cmd $device_id $hex_value
+  ;;
+  *)
+    usage "ERROR: Unrecognized Command \"$cmd\""
+  ;;
+esac
