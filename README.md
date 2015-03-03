@@ -1,5 +1,6 @@
 # insteon
 A script to control INSTEON devices via a Hub 1
+https://www.ebower.com/wiki/INSTEON
 
 You need to make sure "curl" is installed (sudo apt-get install curl).
 
