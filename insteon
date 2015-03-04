@@ -1,17 +1,17 @@
 #!/bin/bash
- 
+
 for filename in /etc/insteon.conf ~/.insteon.conf /etc/insteon.hosts ~/.insteon.hosts; do
   if [ -f "$filename" ]; then
     . $filename
   fi
 done
- 
+
 function debug() {
   if [ "$debug" = "TRUE" ]; then
     >&2 echo "DEBUG: $1"
   fi
 }
- 
+
 function usage() {
   echo "Syntax: $(basename $0) device command [value]"
   echo "device: The device ID or insteon.hosts name of the device"
@@ -22,9 +22,9 @@ function usage() {
   echo "$1"
   exit 1
 }
- 
+
 err_msg=""
- 
+
 for var in insteon_ip insteon_port insteon_user insteon_pwd; do
   if [ "${!var}" = "" ]; then
     err_msg="$err_msg
@@ -32,19 +32,26 @@ ERROR: $var not set in /etc/insteon.conf or ~/.insteon.conf"
   fi
   debug "$var = ${!var}"
 done
- 
+
+for dependency in curl bc; do
+  dep_loc=$(whereis $dependency | awk '{print $2}')
+  debug "$dependency location: $dep_loc"
+  if [ "$dep_loc" = "" ]; then
+  ┆ err_msg="$err_msg
+ERROR: $dependency not installed."
+  fi
+done
+
 if [ "$err_msg" != "" ]; then
   usage "$err_msg"
 fi
- 
+
 device=$1
 cmd=$2
 value=$3
- 
-debug "device = $device"
-debug "cmd = $cmd"
-debug "value = $value"
- 
+
+debug "device = $device; cmd = $cmd; value = $value"
+
 if [ "${!device}" ]; then
   device_id="${!device}"
   debug "found device in hosts file"
@@ -56,11 +63,11 @@ else
   device_id=$(echo "${device^^}" | sed 's/[\:\.]//g')
 fi
 debug "device_id = $device_id"
- 
+
 if ! [[ "$device_id" =~ ^[0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]$ ]]; then
   usage "ERROR: Device $device doesn't have a device ID of the format [00-FF].[00-FF].[00-FF]"
 fi
- 
+
 function send_cmd() {
   cmd=$1
   device_id=$2
@@ -110,13 +117,14 @@ function send_cmd() {
     debug "send_cmd: sending $curl_command as $insteon_user:$insteon_pwd"
     curr_status=$(curl --silent -u $insteon_user:$insteon_pwd "$curl_command" | grep "D=" | awk -F\" '{print $2}')
     response_id=${curr_status:0:6}
-    response_ack=${curr_status:6:2}
+    response_ack=${curr_status:6:1}
+    response_hop=${curr_status:7:1}
     response_cmd=${curr_status:8:2}
     response_value=${curr_status:10:2}
     debug "send_cmd: curr_status = $curr_status"
-    debug "send_cmd: response_id = $response_id; response_ack = $response_ack"
+    debug "send_cmd: response_id = $response_id; response_ack = $response_ack; response_hop: $response_hop"
     debug "send_cmd: response_cmd = $response_cmd; response_value = $response_value"
-    if [ "$response_ack" != "25" ]; then
+    if [ "$response_ack" != "2" ]; then
       echo "ERROR: Device not ready. $curr_status"
       exit 2
     fi
@@ -151,7 +159,7 @@ function send_cmd() {
     fi
   fi
 }
- 
+
 cmd=${cmd,,}
 case $cmd in
   "on"|"fast_on")
