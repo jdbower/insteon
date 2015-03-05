@@ -15,13 +15,21 @@ function debug() {
 function usage() {
   echo "Syntax: $(basename $0) device command [value]"
   echo "device: The device ID or insteon.hosts name of the device"
-  echo "command: on, fast_on, off, fast_off, fan, status, status_fan"
+  echo "command: on, fast_on, off, fast_off, fan, status, status_fan, details"
   echo "value: The percent you'd like to set the dimmer to (0-100) or"
   echo "       low|medium|high|off for fan control."
   echo
   echo "$1"
   exit 1
 }
+
+devices="
+x01x0Ex43 2457D2 LampLinc Plug-In Dimmer
+x01x20x44 2477D Dimmer
+x01x2Ex41 2475F FanLinc
+x02x2Ax43 2477S Switch
+x02x37x48 2635-222 Plug-In On/Off Module
+"
 
 err_msg=""
 
@@ -102,6 +110,10 @@ function send_cmd() {
       cmd_code="19"
       value="03"
     ;;
+    "details")
+      cmd_code="10"
+      value="00"
+    ;;
     *)
       usage "ERROR: There's a bug in my code and I sent an invalid command internally!"
     ;;
@@ -111,6 +123,34 @@ function send_cmd() {
     curl_command="http://$insteon_ip:$insteon_port/3?0262${device_id}${sd_flag}${cmd_code}${value}=I=3"
     debug "send_cmd: sending $curl_command as $insteon_user:$insteon_pwd"
     curl -X POST -u $insteon_user:$insteon_pwd "$curl_command"
+    if [ "$cmd_code" = "10" ]; then
+      curl_command="http://$insteon_ip:$insteon_port/buffstatus.xml"
+      debug "send_cmd: sending $curl_command as $insteon_user:$insteon_pwd"
+      count=0
+      while [ "$(echo "$rsp" | sed 's/0//g')" = "" ] && [ $count -lt 10 ]; do
+        count=$((count+1))
+        curr_buff=$(curl --silent -u $insteon_user:$insteon_pwd "$curl_command" |  sed 's/<[^>]*>//g')
+        debug "curr_buff = $curr_buff"
+        cmd="${curr_buff:0:18}"
+        rsp="${curr_buff:18:22}"
+        ext_rsp1="${curr_buff:40:22}"
+        ext_rsp2="${curr_buff:62:22}"
+        device_details="x${ext_rsp1:10:2}x${ext_rsp1:12:2}x${ext_rsp1:14:2}"
+        sleep 0.1
+      done
+      debug "count = $count; cmd = $cmd; rsp = $rsp"
+      debug "ext_rsp1 = $ext_rsp1; ext_rsp2 = $ext_rsp2"
+      if [ $count -lt 10 ]; then
+        device_name="$(echo "$devices" | grep -w ^$device_details)"
+        if [ "$device_name" = "" ]; then
+          device_name="$device_details UNKNOWN DEVICE"
+        fi
+        echo $device_name
+      else
+        echo "ERROR: Buffer took too long to populate."
+        exit 2
+      fi
+    fi
   else
     # We're looking for a status.
     curl_command="http://$insteon_ip:$insteon_port/sx.xml?${device_id}=${cmd_code}${value}" 
@@ -201,6 +241,9 @@ case $cmd in
     esac
     debug "value = $value; hex_value = $hex_value"
     send_cmd $cmd $device_id $hex_value
+  ;;
+  "details")
+    send_cmd $cmd $device_id
   ;;
   *)
     usage "ERROR: Unrecognized Command \"$cmd\""
