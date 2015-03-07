@@ -152,3 +152,9 @@ body {
 .remote-selected {
   background-color: lightgreen;
 }
+
+.other-service-icon {
+  height: 100px;
+  width: 100px;
+}
+

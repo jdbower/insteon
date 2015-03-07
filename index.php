@@ -35,7 +35,7 @@ $client_id = $ini_array["google-client-id"]["client-id"];
     data-scope="profile">
   </span>
 </span>
-<form id="login" method="POST" action="insteon.php">
+<form id="login" method="POST" action="login.php">
 <input type="hidden" name="id_token" id="id_token" value="none">
 </form>
 </body>

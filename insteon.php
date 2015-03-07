@@ -1,34 +1,12 @@
 <?php
 
-function get_userid($id_token) {
-  $ch = curl_init();
-  $timeout = 5;
-  $url = "https://www.googleapis.com/oauth2/v1/tokeninfo?id_token=".$id_token;
-  curl_setopt($ch, CURLOPT_URL, $url);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-  curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-  $data = curl_exec($ch);
-  curl_close($ch);
-  $user_data = json_decode($data);
-  return $user_data;
+session_start();
+if ( $_SESSION["authenticated"] != 'true' ) {
+  header( 'Location: index.php' ); 
+  exit("ERROR: Not authorized");
 }
 
 $ini_array = parse_ini_file("/etc/insteon.ini", true);
-$users = $ini_array["valid_users"];
-
-$user = get_userid($_POST[id_token]);
-if ( array_search($user->{'user_id'}, $users) == FALSE ) {
-  if ( $user->{'user_id'} == "" ) {
-    header( 'Location: index.php' ); 
-  }
-  exit("Sorry, your user ID (".$user->{'user_id'}.") is not authorized!<br><a href=\"index.php\">Click here</a> to try again.");
-}
-
-$user_id = $user->{'user_id'};
-session_start();
-$_SESSION["user_id"] = $user_id;
-$_SESSION["id_token"] = $_POST[id_token];
-$_SESSION["authenticated"] = 'true';
 
 print "
 <head>
@@ -132,4 +110,14 @@ foreach ( $device as $curr_device ) {
   print "reloadStatus('".$curr_device[id]."');";
 }
 print "</script>";
+print "
+<table align='center'>
+  <tr>";
+$other_services = $ini_array["other_services"];
+foreach ($other_services as $service_name => $service_url) {
+  print "    <td><a target='_blank' href='".$service_url."'><img class='other-service-icon' src='".$service_name.".png'></a></td>\n";
+}
+print "  </tr>
+</table>
+";
 ?>
