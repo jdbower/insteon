@@ -23,6 +23,8 @@ function usage() {
   exit 1
 }
 
+# See the following for details:
+#   http://cache.insteon.com/developer/developer-product-list-012014.pdf
 devices="
 x01x0Ex43 2457D2 LampLinc Plug-In Dimmer
 x01x20x44 2477D Dimmer
@@ -119,6 +121,9 @@ function send_cmd() {
     ;;
   esac
   debug "send_cmd: cmd_code = $cmd_code; sd_flag = $sd_flag; value = $value"
+  curl_command="http://$insteon_ip:$insteon_port/1?XB=M=1"
+  debug "send_cmd: sending $curl_command as $insteon_user:$insteon_pwd"
+  curl -u $insteon_user:$insteon_pwd "$curl_command"
   if [ "$cmd_code" != "19" ]; then
     curl_command="http://$insteon_ip:$insteon_port/3?0262${device_id}${sd_flag}${cmd_code}${value}=I=3"
     debug "send_cmd: sending $curl_command as $insteon_user:$insteon_pwd"
