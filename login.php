@@ -18,18 +18,24 @@ $users = $ini_array["valid_users"];
 
 $id_token = $_POST[id_token];
 $user = get_userid($id_token);
-if ( array_search($user->{'user_id'}, $users) == FALSE ) {
+$user_id = $user->{'user_id'};
+
+if ( array_search($user_id, $users) == FALSE ) {
   print "
 <head>
   <title>INSTEON Login Failed</title>
 </head>
 <body>
-Sorry, your user ID (".$user->{'user_id'}.") is not authorized!<br><a href='index.php'>Click here</a> to try again.
-</body>";
+";
+  if ( $user_id == null ) {
+    print "No user ID detected, <a href='index.php'>click here</a> to return to the login page.<br>";
+  } else {
+    print "Sorry, your user ID (<a href='https://plus.google.com/$user_id'>$user_id</a>) is not authorized!<p>You may contact the server owner if you wish to get access or <a href='https://security.google.com/settings/security/permissions'>click here</a> to edit your security permissions and revoke access to this application.<br>";
+  }
+  print "</body>";
   exit();
 }
 
-$user_id = $user->{'user_id'};
 session_start();
 $_SESSION["user_id"] = $user_id;
 $_SESSION["id_token"] = $_POST[id_token];

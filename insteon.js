@@ -47,6 +47,9 @@ function getStatus(id) {
   }
   var status = document.getElementById(id+'_status').contentWindow.document.body.innerText;
   console.log(id+' has status of '+status);
+  if ( status == 'ERROR: Not authorized' ) {
+    location.reload();
+  }
   if ( /^ERROR/.test(status) ) {
     document.getElementById(id+'_error').style.visibility = 'visible';
     console.log('Error getting status for'+id+': '+status);
@@ -76,6 +79,9 @@ function getFanStatus(id) {
   doneLoading(id);
   var fan_status = document.getElementById(id+'_fan-status').contentWindow.document.body.innerText;
   console.log(id+' has fan status of '+fan_status);
+  if ( fan_status == 'ERROR: Not authorized' ) {
+    location.reload();
+  }
   if ( /^ERROR/.test(fan_status) ) {
     document.getElementById(id+'_error').style.visibility = 'visible';
     console.log('Error getting fan status: '+fan_status);
@@ -84,16 +90,20 @@ function getFanStatus(id) {
   switch(fan_status) {
     case 'low':
       document.getElementById(id+'_fan-level').src='fan-low.png';
+      document.getElementById(id+'_fan-level').title='The fan is on low speed';
       break;
     case 'medium':
       document.getElementById(id+'_fan-level').src='fan-medium.png';
+      document.getElementById(id+'_fan-level').title='The fan is on medium speed';
       break;
     case 'high':
       document.getElementById(id+'_fan-level').src='fan-high.png';
+      document.getElementById(id+'_fan-level').title='The fan is on high speed';
       break;
     case 'off':
       document.getElementById(id+'_icon').src = 'fan-off.png';
       document.getElementById(id+'_fan-level').style.visibility = 'hidden';
+      document.getElementById(id+'_fan-level').title='The fan is off';
       return 0;
       break;
     default:
@@ -113,7 +123,7 @@ function showRemote(id) {
     var fan_stat = document.getElementById(id+'_fan-status').contentWindow.document.body.innerText;
     document.getElementById(div_id+'-fan-high').className = 'fan_remote-small-button remote-not-selected';
     document.getElementById(div_id+'-fan-medium').className = 'fan_remote-small-button remote-not-selected';
-    document.getElementById(div_id+'-fan-low').className = 'fan-remote-small-button remote-not-selected';
+    document.getElementById(div_id+'-fan-low').className = 'fan_remote-small-button remote-not-selected';
     document.getElementById(div_id+'-fan-off').className = 'fan_remote-small-button remote-not-selected';
     document.getElementById(div_id+'-fan-high').name = id;
     document.getElementById(div_id+'-fan-medium').name = id;
@@ -194,3 +204,53 @@ function setFan(id, level) {
   document.getElementById('cmd').src = 'set_fan.php?device_id='+id+'&value='+level;
 }
 
+function setAway() {
+  var device_list = document.getElementsByName('device_div');
+  console.log("Setting away mode"); 
+  index = 0;
+  len = device_list.length;
+  var needs_refresh = new Array();
+  // First turn off lights in a one second loop.
+  (function lightLoop (index) {          
+    setTimeout(function () {
+      dev_id = device_list[index - 1].id;
+      if ( document.getElementById(dev_id+'_off-when-away').title == 'true' ) {
+        console.log('Setting '+dev_id+' away.');
+        if ( document.getElementById(dev_id+'_status').contentWindow.document.body.innerText != '0' ) {
+          setLight(dev_id,'0');
+          needs_refresh[dev_id] = 'true';
+        }
+      }
+      if (--index) lightLoop(index);
+    }, 1000)
+  })(len);
+
+  // Next turn off fans in a one second loop.
+  (function fanLoop (index) {
+    setTimeout(function () {
+      dev_id = device_list[index - 1].id;
+      if ( document.getElementById(dev_id+'_off-when-away').title == 'true' ) {
+        if ( isFan(dev_id) == 'true' ) {
+          if ( document.getElementById(dev_id+'_fan-status').contentWindow.document.body.innerText != 'off' ) {
+            setFan(dev_id,'off');
+            needs_refresh[dev_id] = 'true';
+          }
+        }
+      }
+      if (--index) fanLoop(index);
+    }, 1000)
+  })(len);
+
+  // And now reload the devices
+  (function reloadLoop (index) {
+    setTimeout(function () {
+      dev_id = device_list[index - 1].id;
+      if ( needs_refresh[dev_id] == 'true' ) {
+        reloadStatus(dev_id);
+      }
+      if (--index) reloadLoop(index);
+    }, 1000)
+  })(len);
+
+
+}

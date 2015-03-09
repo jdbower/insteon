@@ -24,7 +24,7 @@ print "<table>
 
 function draw_device($dev) {
   print "    <td align='center'>\n";
-  print "      <div style='position: relative; left: 0; top: 0;'>\n";
+  print "      <div id='".$dev[id]."' name='device_div' style='position: relative; left: 0; top: 0;'>\n";
   if ( $dev[fan] == 'true' ) {
     print "        <img id='".$dev[id]."_icon' class='main-icon' src='fan-off.png' />\n";
     print "        <img id='".$dev[id]."_fan-level' class='fan-level-icon' src='fan-medium.png' />\n";
@@ -39,12 +39,16 @@ function draw_device($dev) {
       print "        <div id='".$dev[id]."_level' class='light-level' ><b></b></div>";
     }
   }
-  print "        <img id='".$dev[id]."_reload' class='reload-icon' src='reload.png' onClick='reloadStatus(\"".$dev[id]."\")'/>\n";
-  print "        <img id='".$dev[id]."_power' class='power-icon' src='power.png' onClick='showRemote(\"".$dev[id]."\")'/>\n";
-  print "        <img id='".$dev[id]."_loading' class='loading-icon' src='loading.gif' />\n";
+  print "        <img id='".$dev[id]."_reload' class='reload-icon' src='reload.png' title='Click here to refresh device status' onClick='reloadStatus(\"".$dev[id]."\")'/>\n";
+  print "        <img id='".$dev[id]."_power' class='power-icon' src='power.png' title='Click here to show the remote' onClick='showRemote(\"".$dev[id]."\")'/>\n";
+  print "        <img id='".$dev[id]."_loading' class='loading-icon' src='loading.gif' title='Refreshing device status' />\n";
   print "        <img id='".$dev[id]."_error' class='error-icon' src='error.png' />\n";
   print "      </div>\n";
-  print "      <div style='display: none'><iframe id='".$dev[id]."_status' src='' onLoad='getStatus(\"".$dev[id]."\")'></iframe><iframe id='".$dev[id]."_fan-status' src='' onLoad='getFanStatus(\"".$dev[id]."\")'></iframe></div>\n";
+  print "      <div style='display: none'>\n";
+  print "        <iframe id='".$dev[id]."_status' src='' onLoad='getStatus(\"".$dev[id]."\")'></iframe>\n";
+  print "        <iframe id='".$dev[id]."_fan-status' src='' onLoad='getFanStatus(\"".$dev[id]."\")'></iframe>\n";
+  print "        <div id='".$dev[id]."_off-when-away' title='".$dev[off-when-away]."'></div>\n";
+  print "      </div>\n";
   print "      <h3>".$dev[name]."</h3>\n";
   print "    </td>\n";
 }
@@ -64,6 +68,7 @@ foreach ($device_list as $device_name => $curr_device) {
     $device[$device_id][dimmer] = false;
   }
   $device[$device_id][name] = $device_array[2];
+  $device[$device_id][off-when-away] = $device_array[3];
   # The first two bytes are the product ID, but we can ignore the last
   # as it seems to be a revision.
   if ( substr($device[$device_id][details],0,6) == 'x01x2E' ) {
@@ -73,7 +78,7 @@ foreach ($device_list as $device_name => $curr_device) {
   }
   if ( $dev_count % $dev_per_row == 0 ) {
     print "  </tr>
-  <tr>";
+  <tr>\n";
   }
   $dev_count++;
   draw_device($device[$device_id]);
@@ -117,6 +122,7 @@ $other_services = $ini_array["other_services"];
 foreach ($other_services as $service_name => $service_url) {
   print "    <td><a target='_blank' href='".$service_url."'><img class='other-service-icon' src='".$service_name.".png'></a></td>\n";
 }
+print "    <td><img src='away.png' class='other-service-icon' title='Set Away Mode' onClick='setAway();'></td>\n";
 print "  </tr>
 </table>
 ";
