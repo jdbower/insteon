@@ -5,6 +5,7 @@ function reloadStatus(id) {
   document.getElementById(id+'_power').style.visibility = 'hidden'; 
   document.getElementById(id+'_loading').style.visibility = 'visible'; 
   document.getElementById(id+'_status').src='status.php?device_id='+id;
+  document.getElementById('nest').src='nest.php';
 }
 
 function doneLoading(id) {
@@ -30,6 +31,33 @@ function isDimmer(id) {
     return 'false';
   } else {
     return 'true';
+  }
+}
+
+function getTemp() {
+  console.log('Getting Temperature');
+  temps = document.getElementById('nest').contentWindow.document.body.innerText;
+  temps = temps.split('\n');
+  for ( index = 0; index < temps.length; ++index) {
+    curr_temp = temps[index];
+    if ( curr_temp != "" ) {
+      curr_temp = curr_temp.split(',');
+      html = curr_temp[1]+" ("+curr_temp[2]+")";
+      if ( curr_temp[3] == "heat" ) {
+        html = html.concat("<img class='temp-icon' src='hvac-heat.png'>");
+      }
+      if ( curr_temp[3] == "cool" ) {
+        html = html.concat("<img class='temp-icon' src='hvac-cool.png'>");
+      }
+      if ( curr_temp[3] == "fan" ) {
+        html = html.concat("<img class='temp-icon' src='hvac-fan.png'>");
+      }
+      if ( curr_temp[4] == "away" ) {
+        html = html.concat("<img class='temp-icon' src='away.png'>");
+      }
+      
+      document.getElementById(curr_temp[0]+'_temp').innerHTML = html;
+    }
   }
 }
 

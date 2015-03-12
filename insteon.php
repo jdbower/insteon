@@ -19,7 +19,7 @@ print "
 
 $device_list = $ini_array["devices"];
 
-print "<table>
+print "<table class='icon-table'>
   <tr>\n";
 
 function draw_device($dev) {
@@ -69,12 +69,21 @@ foreach ($device_list as $device_name => $curr_device) {
   }
   $device[$device_id][name] = $device_array[2];
   $device[$device_id][off-when-away] = $device_array[3];
+  $device[$device_id][room] = $device_array[4];
   # The first two bytes are the product ID, but we can ignore the last
   # as it seems to be a revision.
   if ( substr($device[$device_id][details],0,6) == 'x01x2E' ) {
     $device[$device_id][fan] = 'true';
   } else {
     $device[$device_id][fan] = 'false';
+  }
+  if ( $device[$device_id][room] != $old_room ) {
+    $old_room = $device[$device_id][room];
+    $room_name = $ini_array[rooms][$old_room];
+    print "  </tr>
+  <tr>
+    <th colspan='2' class='room-header' id='".$old_room."_header'>$room_name</th><th colspan='2' class='temp-header' id='".$old_room."_temp'></th>\n";
+    $dev_count = 0;
   }
   if ( $dev_count % $dev_per_row == 0 ) {
     print "  </tr>
@@ -106,6 +115,7 @@ print "
 </div>
 <div id='cmd_div' style='visibility: hidden'>
 <iframe id='cmd' src=''></iframe>
+<iframe id='nest' src='nest.php' onLoad='getTemp()'></iframe>
 <input type='hidden' id='remote_change'>
 </div>
 ";

@@ -158,3 +158,21 @@ body {
   width: 100px;
 }
 
+.icon-table {
+  border-collapse: collapse;
+}
+
+.room-header {
+  text-align: left;
+  background-color: lightgray;
+}
+
+.temp-header {
+  text-align: right;
+  background-color: lightgray;
+}
+
+.temp-icon {
+  height: 15px;
+  width: 15px;
+}
