@@ -12,6 +12,7 @@ print "
 <head>
 <script src='insteon.js' type='text/javascript'></script>
 <link rel='stylesheet' type='text/css' href='insteon.css'>
+<link rel='shortcut icon' href='favicon.ico' />
 
 <title>INSTEON Controller</title>
 </head>
@@ -32,6 +33,9 @@ function draw_device($dev) {
     if ( $dev[dimmer] == 'true' ) {
       print "        <div id='".$dev[id]."_level' class='fan-light-level' ><b></b></div>\n";
     }
+  } elseif ( $dev[pc] == 'true' ) {
+    print "        <img id='".$dev[id]."_icon' class='main-icon' src='pc-off.png' />\n";
+    print "        <img id='".$dev[id]."_light-on' class='pc-icon' src='pc-on.png' />\n";
   } else {
     print "        <img id='".$dev[id]."_icon' class='main-icon' src='light-off.png' />\n";
     print "        <img id='".$dev[id]."_light-on' class='light-icon' src='light-on.png' />\n";
@@ -77,12 +81,26 @@ foreach ($device_list as $device_name => $curr_device) {
   } else {
     $device[$device_id][fan] = 'false';
   }
+  if ( $device[$device_id][details] == 'pc' ) {
+    $device[$device_id][pc] = 'true';
+  } else {
+    $device[$device_id][pc] = 'false';
+  }
   if ( $device[$device_id][room] != $old_room ) {
     $old_room = $device[$device_id][room];
     $room_name = $ini_array[rooms][$old_room];
     print "  </tr>
   <tr>
-    <th colspan='2' class='room-header' id='".$old_room."_header'>$room_name</th><th colspan='2' class='temp-header' id='".$old_room."_temp'></th>\n";
+    <th colspan='2' class='room-header' id='".$old_room."_header'>$room_name</th>
+    <th colspan='2' class='temp-header' id='".$old_room."_temp_header'>
+      <div class='temp-div' id='".$old_room."_temp'></div>
+      <img class='temp-icon' id='".$old_room."_cool' title='Cooling' src='hvac-cool.png'>
+      <img class='temp-icon' id='".$old_room."_heat' title='Heating' src='hvac-heat.png'>
+      <img class='temp-icon' id='".$old_room."_fan' title='Fan is on' src='hvac-fan.png'>
+      <img class='temp-icon' id='".$old_room."_away' title='Set to Away' src='away.png'>
+      <img class='temp-icon' name='nest_power' id='".$old_room."_power' src='power.png' onClick='showNestRemote(\"".$old_room."\")'>
+      <img class='temp-icon' name='nest_loading' id='".$old_room."_loading' src='loading.gif')'>
+    </th>\n";
     $dev_count = 0;
   }
   if ( $dev_count % $dev_per_row == 0 ) {
@@ -106,11 +124,16 @@ print "
 <tr><td id='fan_remote-light-off' colspan='2' class='fan_remote-button remote-not-selected'>Off</td></tr>
 </table>
 </div>
-</div>
 <div id='light_remote' class='remote-div' onClick='hideRemote()'>
 <table border='1' class='remote-table'>
 <tr><td id='light_remote-light-on' colspan='2' class='light_remote-button remote-not-selected'>On</td></tr>
 <tr><td id='light_remote-light-off' colspan='2' class='light_remote-button remote-not-selected'>Off</td></tr>
+</table>
+</div>
+<div id='nest_remote' class='remote-div' onClick='hideRemote()'>
+<table border='1' class='remote-table'>
+<tr><td id='nest_remote-away' colspan='2' class='nest_remote-button remote-not-selected'>On</td></tr>
+<tr><td id='nest_remote-home' colspan='2' class='nest_remote-button remote-not-selected'>Off</td></tr>
 </table>
 </div>
 <div id='cmd_div' style='visibility: hidden'>

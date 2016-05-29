@@ -23,6 +23,7 @@ $user_id = $user->{'user_id'};
 if ( array_search($user_id, $users) == FALSE ) {
   print "
 <head>
+  <link rel='shortcut icon' href='favicon.ico' />
   <title>INSTEON Login Failed</title>
 </head>
 <body>

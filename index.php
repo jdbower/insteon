@@ -1,4 +1,6 @@
 <head>
+<link rel='shortcut icon' href='favicon.ico' />
+<title>INSTEON Controller Login</title>
 <script src="https://apis.google.com/js/client:platform.js" async defer></script>
 <script>
 function signinCallback(authResult) {

@@ -2,9 +2,14 @@ function reloadStatus(id) {
   console.log('Reloading '+id);
   document.getElementById(id+'_reload').style.visibility = 'hidden'; 
   document.getElementById(id+'_error').style.visibility = 'hidden'; 
+  document.getElementById(id+'_error').title = ''; 
   document.getElementById(id+'_power').style.visibility = 'hidden'; 
-  document.getElementById(id+'_loading').style.visibility = 'visible'; 
-  document.getElementById(id+'_status').src='status.php?device_id='+id;
+  document.getElementById(id+'_loading').style.visibility = 'visible';
+  if ( isPC(id) == "true" ) {
+    document.getElementById(id+'_status').src='pc_status.php?device_id='+id;
+  } else {
+    document.getElementById(id+'_status').src='status.php?device_id='+id;
+  }
   document.getElementById('nest').src='nest.php';
 }
 
@@ -13,6 +18,11 @@ function doneLoading(id) {
   document.getElementById(id+'_reload').style.visibility = 'visible';
   if ( document.getElementById(id+'_error').style.visibility != 'visible' ) {
     document.getElementById(id+'_power').style.visibility = 'visible';
+    if ( isPC(id) == 'true' ) {
+      if ( document.getElementById(id+'_status').contentWindow.document.body.innerText == "1" ) {
+        document.getElementById(id+'_power').style.visibility = 'hidden';
+      }
+    }
   } else {
     document.getElementById(id+'_power').style.visibility = 'hidden';
   }
@@ -20,6 +30,22 @@ function doneLoading(id) {
 
 function isFan(id) {
   if ( document.getElementById(id+'_fan-level') === null ) {
+    return 'false';
+  } else {
+    return 'true';
+  }
+}
+
+function isPC(id) {
+  if ( document.getElementById(id+'_light-on').className === 'pc-icon' ) {
+    return 'true';
+  } else {
+    return 'false';
+  }
+}
+
+function isNest(id) {
+  if ( document.getElementById(id+'_temp') === null ) {
     return 'false';
   } else {
     return 'true';
@@ -42,21 +68,25 @@ function getTemp() {
     curr_temp = temps[index];
     if ( curr_temp != "" ) {
       curr_temp = curr_temp.split(',');
-      html = curr_temp[1]+" ("+curr_temp[2]+")";
-      if ( curr_temp[3] == "heat" ) {
-        html = html.concat("<img class='temp-icon' src='hvac-heat.png'>");
+      room = curr_temp[0];
+      document.getElementById(room+'_cool').style.display = "none";
+      document.getElementById(room+'_heat').style.display = "none";
+      document.getElementById(room+'_fan').style.display = "none";
+      document.getElementById(room+'_away').style.display = "none";
+      if ( curr_temp[3] == "cool-on" ) {
+        document.getElementById(room+'_cool').style.display = "inline";
       }
-      if ( curr_temp[3] == "cool" ) {
-        html = html.concat("<img class='temp-icon' src='hvac-cool.png'>");
+      if ( curr_temp[4] == "heat-on" ) {
+        document.getElementById(room+'_heat').style.display = "inline";
       }
-      if ( curr_temp[3] == "fan" ) {
-        html = html.concat("<img class='temp-icon' src='hvac-fan.png'>");
+      if ( curr_temp[5] == "fan" ) {
+        document.getElementById(room+'_fan').style.display = "inline";
       }
-      if ( curr_temp[4] == "away" ) {
-        html = html.concat("<img class='temp-icon' src='away.png'>");
+      if ( curr_temp[6] == "away" ) {
+        document.getElementById(room+'_away').style.display = "inline";
       }
-      
-      document.getElementById(curr_temp[0]+'_temp').innerHTML = html;
+      document.getElementById(room+'_temp').innerHTML = curr_temp[1]+" ("+curr_temp[2]+")"; 
+      document.getElementById(room+'_power').style.display = "none";
     }
   }
 }
@@ -80,6 +110,7 @@ function getStatus(id) {
   }
   if ( /^ERROR/.test(status) ) {
     document.getElementById(id+'_error').style.visibility = 'visible';
+    document.getElementById(id+'_error').title = status;
     console.log('Error getting status for'+id+': '+status);
     return 1;
   }
@@ -112,6 +143,7 @@ function getFanStatus(id) {
   }
   if ( /^ERROR/.test(fan_status) ) {
     document.getElementById(id+'_error').style.visibility = 'visible';
+    document.getElementById(id+'_error').title = fan_status;
     console.log('Error getting fan status: '+fan_status);
     return 1;
   }
@@ -136,6 +168,7 @@ function getFanStatus(id) {
       break;
     default:
       document.getElementById(id+'_error').style.visibility = 'visible';
+    document.getElementById(id+'_error').title = fan_status;
       console.log('Error setting fan status: '+fan_status);
       return 1;
   }
@@ -159,7 +192,11 @@ function showRemote(id) {
     document.getElementById(div_id+'-fan-off').name = id;
     document.getElementById(div_id+'-fan-'+fan_stat).className = 'fan_remote-small-button remote-selected';
   } else {
-    div_id = 'light_remote';
+    if ( isNest(id) == 'true' ) {
+      div_id = 'nest_remote';
+    } else {
+      div_id = 'light_remote';
+    }
   }
   document.getElementById(div_id).name = id;
   var light_stat = document.getElementById(id+'_status').contentWindow.document.body.innerText;
@@ -224,7 +261,11 @@ function hideRemote() {
 
 function setLight(id, level) {
   console.log('Setting '+id+' to '+level);
-  document.getElementById('cmd').src = 'set_light.php?device_id='+id+'&value='+level;
+  if ( isPC(id) == 'true' ) {
+    document.getElementById('cmd').src = 'pc_wake.php?device_id='+id;
+  } else {
+    document.getElementById('cmd').src = 'set_light.php?device_id='+id+'&value='+level;
+  }
 }
 
 function setFan(id, level) {

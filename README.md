@@ -5,6 +5,8 @@ same:
 https://www.ebower.com/wiki/INSTEON
 https://www.ebower.com/wiki/INSTEON/controller
 
+== CLI ==
+
 You need to make sure "curl" is installed (sudo apt-get install curl).
 
 Create a ~/.insteon.conf or /etc/insteon.conf with the following information:
@@ -40,3 +42,12 @@ insteon bedroom_fan fan low
 
 To turn off the bedroom lights without a fade:
 insteon bedroom_lights fast_off
+
+== Web UI ==
+
+For the web UI, make sure you have the following:
+  sudo apt-get install apache2 php5 etherwake nmap
+
+Using etherwake and nmap is only required if you wish to control Wake-on-LAN enabled PCs. 
+
+See https://www.ebower.com/wiki/INSTEON/controller for more details.
